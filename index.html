@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Violations by Category</title>
+  <style>
+    body {background-color:#fff; font:12px sans-serif;}
+    div#page {display:block; margin:0 auto; height:800px;width:800px;}
+    .chart-text {
+      font: 12px sans-serif;
+    }
+    .chart-text-header {
+      font: 12px sans-serif;
+      text-decoration:underline;
+    }
+    svg{border:1px solid #ccc;}
+    .bar {
+      fill: steelblue;
+      shape-rendering: crispEdges;
+    }
+  </style>
+</head>
+<body>
+  <div id="page"></div>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script>
+
+    page = d3.select("div#page")
+
+    header = page.append("div")
+        .attr("id","header")
+
+    header.append("h1")
+        .attr("id","title")
+        .text("Violations by Category")
+
+    var svg = page.append("svg")
+        .attr("height",280)
+        .attr("width",800)
+        .append("g")
+            .attr("transform", "translate(" + 0 + "," + 30 + ")")
+
+    svg.append("text").text("category name")
+        .attr("class","chart-text-header")
+        .attr("x",0 + 20)
+        .attr("y",0)
+
+    svg.append("text").text("earliest")
+        .attr("class","chart-text-header")
+        .attr("x",150 + 20)
+        .attr("y",0)
+
+    svg.append("text").text("latest")
+        .attr("class","chart-text-header")
+        .attr("x",225 + 20)
+        .attr("y",0)
+
+    svg.append("text").text("distinct count of violation_id")
+        .attr("class","chart-text-header")
+        .attr("x",320 + 20 + 110)
+        .attr("y",0)
+
+    footer = page.append("div")
+        .attr("id","footer")
+
+    source_link = footer.append("a")
+        .attr("href","https://github.com/s2t2/cfa-violations")
+        .text("source")
+
+    var formatDateTime = d3.time.format("%m/%d/%Y")
+
+    var x = d3.scale.linear()
+        .range([0, 400])
+      
+    //or request from http://forever.codeforamerica.org/fellowship-2015-tech-interview/Violations-2012.csv
+    d3.csv("Violations-2012.csv", function(csv_data){
+      grouped_data = d3.nest()
+          .key(function(d) { return d.violation_category;})
+          .rollup(function(leaves) { 
+            return {
+              violation_count: leaves.length,
+              first_violation_at: new Date(d3.min(  leaves.map( function(l){ return l.violation_date}) ) ),
+              last_violation_at: new Date(d3.max(  leaves.map( function(l){ return l.violation_date}) ) )
+            } 
+          })
+          .entries(csv_data)
+
+      grouped_data.sort(function(a, b){return d3.descending(a.values.violation_count, b.values.violation_count);})
+
+      x.domain([0, d3.max(grouped_data, function(d){return parseFloat(d.values.violation_count); })])
+
+      category = svg.selectAll(".category")
+          .data(grouped_data)
+
+      category.enter()
+          .append("g").attr("class", "category")
+          .attr("transform", function(d, i) {return "translate(" + 20 + "," + (20 + (25 * i)) + ")";})
+
+      category.append("text")
+          .attr("class","chart-text")
+          .attr("x",0)
+          .attr("y",5)
+          .text(function(d){
+            return d.key
+          })
+
+      category.append("text")
+          .attr("class","chart-text")
+          .attr("x",150)
+          .attr("y",5)
+          .text(function(d){
+            return formatDateTime(d.values.first_violation_at)
+          })
+
+      category.append("text")
+          .attr("class","chart-text")
+          .attr("x",225)
+          .attr("y",5)
+          .text(function(d){
+            return formatDateTime(d.values.last_violation_at)
+          })
+
+      category.append("rect")
+          .attr("class","bar")
+          .attr("x",320)
+          .attr("y", -10)
+          .attr("height",20)
+          .attr("width", function(d){
+            return x(d.values.violation_count)
+          })
+
+      category.append("text")
+          .attr("class","chart-text")
+          .attr("x", function(d){
+            return  320 + x(d.values.violation_count) + 5
+          })
+          .attr("y", 5)
+          .text(function(d) {
+            return d.values.violation_count
+          })
+
+    }); // d3.json
+
+  </script>
+</body>
+</html>
